@@ -1,0 +1,660 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sheik Nasraddiin Admin Panel</title>
+  <!-- Firebase Libraries -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+  <!-- Font Awesome -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #2B5A46;
+      --secondary: #7D9D6E;
+      --accent: #D4AF37;
+      --light: #F8F5F0;
+      --dark: #1E1E1E;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      margin: 0;
+      padding: 1rem;
+    }
+    h1 {
+      text-align: center;
+      color: var(--primary);
+      margin-bottom: 2rem;
+    }
+    .cards-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .card {
+      background: #fff;
+      border-radius: 15px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      padding: 1.5rem;
+      flex: 1 1 30%;
+      position: relative;
+    }
+    .card h2 {
+      text-align: center;
+      margin-bottom: 1rem;
+      color: var(--primary);
+    }
+    .table-container {
+      overflow-x: auto;
+      margin-bottom: 1rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    th, td {
+      padding: 0.75rem;
+      border: 1px solid #ddd;
+      text-align: left;
+    }
+    th { background: #e9ecef; }
+    .card-button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 10px;
+      cursor: pointer;
+      display: block;
+      margin: 0 auto;
+      transition: background 0.3s ease;
+    }
+    .card-button:hover { background: #c19b2b; }
+    /* Download Icon and Dropdown Menu */
+    .download-container {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+    }
+    .download-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 1.2rem;
+      color: var(--primary);
+    }
+    .download-menu {
+      display: none;
+      position: absolute;
+      top: 30px;
+      right: 0;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      padding: 10px;
+      width: 200px;
+    }
+    .download-menu form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .download-menu label {
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .download-submit-btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 0.5rem;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      margin-top: 5px;
+    }
+    .download-submit-btn:hover { background: #c19b2b; }
+    /* Admin Actions for Answered Card */
+    .admin-actions button {
+      margin: 2px;
+      font-size: 0.8rem;
+      padding: 0.3rem 0.5rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn-edit { background: #5bc0de; color: #fff; }
+    .btn-delete { background: #d9534f; color: #fff; }
+    .btn-duplicate { background: #f0ad4e; color: #fff; }
+    .btn-ban { background: #8a2be2; color: #fff; }
+    .btn-track { background: #6c757d; color: #fff; }
+    /* Tab Navigation at Bottom of Answered Card */
+    .tab-nav {
+      display: flex;
+      justify-content: space-around;
+      border-top: 1px solid #ddd;
+      padding-top: 0.5rem;
+      margin-top: 1rem;
+    }
+    .tab-nav button {
+      background: none;
+      border: none;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .tab-nav button.active {
+      border-bottom: 3px solid var(--accent);
+      font-weight: bold;
+    }
+    .tab-content {
+      display: none;
+      margin-top: 1rem;
+    }
+    .tab-content.active { display: block; }
+    /* Modal Styles (for editing answer) */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #fff;
+      border-radius: 15px;
+      width: 90%;
+      max-width: 600px;
+      padding: 1.5rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      z-index: 1100;
+    }
+    .modal.active { display: block; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; }
+    .modal-close { cursor: pointer; font-size: 1.5rem; }
+    .modal-body { margin-top: 1rem; }
+    .submit-btn {
+      background: var(--primary);
+      color: #fff;
+      padding: 0.8rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .submit-btn:hover { background: var(--secondary); }
+  </style>
+</head>
+<body>
+  <h1>Sheik Nasraddiin Admin Panel</h1>
+  <div class="cards-container">
+    <!-- Card 1: General Questions -->
+    <div class="card" id="generalCard">
+      <h2>General Questions</h2>
+      <!-- Download Icon -->
+      <div class="download-container" data-target="generalTableContainer">
+        <button class="download-btn"><i class="fas fa-download"></i></button>
+        <div class="download-menu">
+          <form>
+            <label><input type="checkbox" name="fields" value="userName" checked> User Name</label>
+            <label><input type="checkbox" name="fields" value="questionText" checked> Question</label>
+            <label><input type="checkbox" name="fields" value="dynamicData" checked> Dynamic Data</label>
+            <label><input type="checkbox" name="fields" value="submissionDate" checked> Submission Date</label>
+            <button type="button" class="download-submit-btn">Download</button>
+          </form>
+        </div>
+      </div>
+      <div class="table-container" id="generalTableContainer">
+        <!-- General questions table will load here -->
+      </div>
+      <button class="card-button" onclick="openAnswerModal('general', null, 'generalTableContainer')">Answer Selected</button>
+    </div>
+    <!-- Card 2: Sheik Nasraddiin Questions -->
+    <div class="card" id="nasraddiinCard">
+      <h2>Sheik Nasraddiin Questions</h2>
+      <!-- Download Icon -->
+      <div class="download-container" data-target="nasraddiinTableContainer">
+        <button class="download-btn"><i class="fas fa-download"></i></button>
+        <div class="download-menu">
+          <form>
+            <label><input type="checkbox" name="fields" value="userName" checked> User Name</label>
+            <label><input type="checkbox" name="fields" value="questionText" checked> Question</label>
+            <label><input type="checkbox" name="fields" value="dynamicData" checked> Dynamic Data</label>
+            <label><input type="checkbox" name="fields" value="submissionDate" checked> Submission Date</label>
+            <button type="button" class="download-submit-btn">Download</button>
+          </form>
+        </div>
+      </div>
+      <div class="table-container" id="nasraddiinTableContainer">
+        <!-- Sheik Nasraddiin questions table will load here -->
+      </div>
+      <button class="card-button" onclick="openAnswerModal('sheikh', 'Sheik Nasraddiin', 'nasraddiinTableContainer')">Answer Selected</button>
+    </div>
+    <!-- Card 3: Answered Questions -->
+    <div class="card" id="answeredCard">
+      <h2>Answered Questions</h2>
+      <!-- Download Icon -->
+      <div class="download-container" data-target="answeredTableContainer">
+        <button class="download-btn"><i class="fas fa-download"></i></button>
+        <div class="download-menu">
+          <form>
+            <label><input type="checkbox" name="fields" value="userName" checked> User Name</label>
+            <label><input type="checkbox" name="fields" value="questionText" checked> Question</label>
+            <label><input type="checkbox" name="fields" value="answerText" checked> Answer</label>
+            <label><input type="checkbox" name="fields" value="answerDate" checked> Answer Date</label>
+            <button type="button" class="download-submit-btn">Download</button>
+          </form>
+        </div>
+      </div>
+      <div class="table-container" id="answeredTableContainer">
+        <!-- Answered questions table with admin actions will load here -->
+      </div>
+      <!-- Tab Navigation at Bottom -->
+      <div class="tab-nav" id="adminTabNav">
+        <button id="tab-edit" class="active" onclick="switchTab('edit')"><i class="fas fa-edit"></i> Edit</button>
+        <button id="tab-delete" onclick="switchTab('delete')"><i class="fas fa-trash"></i> Delete</button>
+        <button id="tab-duplicate" onclick="switchTab('duplicate')"><i class="fas fa-copy"></i> Duplicate</button>
+        <button id="tab-track" onclick="switchTab('track')"><i class="fas fa-user"></i> Users Track</button>
+      </div>
+      <!-- Tab Content -->
+      <div class="tab-content active" id="tabContent-edit">
+        <h3>Edit Answers</h3>
+        <div id="editContent">
+          <!-- Content loaded via Firebase for editing -->
+        </div>
+      </div>
+      <div class="tab-content" id="tabContent-delete">
+        <h3>Delete Answers</h3>
+        <div id="deleteContent">
+          <!-- Content loaded via Firebase for deletion -->
+        </div>
+      </div>
+      <div class="tab-content" id="tabContent-duplicate">
+        <h3>Duplicate Answers</h3>
+        <div id="duplicateContent">
+          <!-- Content loaded via Firebase for duplication -->
+        </div>
+      </div>
+      <div class="tab-content" id="tabContent-track">
+        <h3>Users Track</h3>
+        <div id="trackContent">
+          <p>Users tracking info coming soon...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Answer Modal -->
+  <div class="modal" id="editAnswerModal">
+    <div class="modal-header">
+      <h2>Edit Answer</h2>
+      <span class="modal-close" onclick="closeEditModal()">&times;</span>
+    </div>
+    <div class="modal-body">
+      <form id="editAnswerForm">
+        <div class="form-group">
+          <textarea id="editAnswerText" placeholder="Edit your answer here" rows="4" required></textarea>
+        </div>
+        <!-- (Optional: Controls for re-uploading audio) -->
+        <button type="submit" class="submit-btn">Save Changes</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Answer Modal (for submitting new answers) -->
+  <div class="modal" id="answerModal">
+    <div class="modal-header">
+      <h2>Submit Answer</h2>
+      <span class="modal-close" onclick="closeAnswerModal()">&times;</span>
+    </div>
+    <div class="modal-body">
+      <form id="answerForm">
+        <div class="form-group">
+          <textarea id="answerText" placeholder="Write your answer here" rows="4" required></textarea>
+        </div>
+        <div class="form-group">
+          <label>Upload Audio (optional):</label>
+          <input type="file" id="audioFile" accept="audio/*">
+        </div>
+        <button type="submit" class="submit-btn" id="answerSubmitBtn">Submit Answer</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Initialize Firebase (replace with your own config)
+    var firebaseConfig = {
+      apiKey: "AIzaSyAFgxSMtktsqJjcJOMnkTB8yZF6T492gpA",
+      authDomain: "fadis-youth.firebaseapp.com",
+      databaseURL: "https://fadis-youth-default-rtdb.firebaseio.com",
+      projectId: "fadis-youth",
+      storageBucket: "fadis-youth.firebasestorage.app",
+      messagingSenderId: "1067077305340",
+      appId: "1:1067077305340:web:3ca9c71202a8020c6ba879",
+      measurementId: "G-Z02SPW9ZKW"
+    };
+    firebase.initializeApp(firebaseConfig);
+    var db = firebase.firestore();
+    var storage = firebase.storage();
+
+    // --- Table Building Functions ---
+    function buildGeneralTable(querySnapshot) {
+      let html = "<table><thead><tr>" +
+                 "<th>Select</th>" +
+                 "<th>User Name</th>" +
+                 "<th>Question</th>" +
+                 "<th>Dynamic Data</th>" +
+                 "<th>Submission Date</th>" +
+                 "</tr></thead><tbody>";
+      querySnapshot.forEach(function(doc) {
+        let data = doc.data();
+        if(data.questionText === "Your question is answered") return;
+        let dynamicData = data.dynamicData ? JSON.stringify(data.dynamicData) : "";
+        html += `<tr>
+          <td><input type="checkbox" class="select-checkbox" value="${doc.id}"></td>
+          <td>${data.userName || ""}</td>
+          <td>${data.questionText || ""}</td>
+          <td>${dynamicData}</td>
+          <td>${new Date(data.submissionDate).toLocaleString()}</td>
+        </tr>`;
+      });
+      html += "</tbody></table>";
+      return html;
+    }
+    function buildNasraddiinTable(querySnapshot) {
+      let html = "<table><thead><tr>" +
+                 "<th>Select</th>" +
+                 "<th>User Name</th>" +
+                 "<th>Question</th>" +
+                 "<th>Dynamic Data</th>" +
+                 "<th>Submission Date</th>" +
+                 "</tr></thead><tbody>";
+      querySnapshot.forEach(function(doc) {
+        let data = doc.data();
+        if(data.questionText === "Your question is answered") return;
+        let dynamicData = data.dynamicData ? JSON.stringify(data.dynamicData) : "";
+        html += `<tr>
+          <td><input type="checkbox" class="select-checkbox" value="${doc.id}"></td>
+          <td>${data.userName || ""}</td>
+          <td>${data.questionText || ""}</td>
+          <td>${dynamicData}</td>
+          <td>${new Date(data.submissionDate).toLocaleString()}</td>
+        </tr>`;
+      });
+      html += "</tbody></table>";
+      return html;
+    }
+    function buildAnsweredTable(querySnapshot) {
+      let html = "<table><thead><tr>" +
+                 "<th>Select</th>" +
+                 "<th>User Name</th>" +
+                 "<th>Question</th>" +
+                 "<th>Answer</th>" +
+                 "<th>Answer Date</th>" +
+                 "<th>Actions</th>" +
+                 "</tr></thead><tbody>";
+      querySnapshot.forEach(function(doc) {
+        let data = doc.data();
+        let answer = data.answerText || "";
+        html += `<tr id="row-${doc.id}">
+          <td><input type="checkbox" class="select-checkbox" value="${doc.id}"></td>
+          <td>${data.userName || ""}</td>
+          <td>${data.questionText || ""}</td>
+          <td>${answer}</td>
+          <td>${new Date(data.answerDate).toLocaleString()}</td>
+          <td class="admin-actions">
+            <button class="btn-edit" onclick="editAnswer('${doc.id}')"><i class="fas fa-edit"></i></button>
+            <button class="btn-delete" onclick="deleteAnswer('${doc.id}')"><i class="fas fa-trash"></i></button>
+            <button class="btn-duplicate" onclick="duplicateAnswer('${doc.id}')"><i class="fas fa-copy"></i></button>
+            <button class="btn-ban" onclick="banUser('${doc.id}')"><i class="fas fa-user-slash"></i></button>
+            <button class="btn-track" onclick="trackUsers('${doc.id}')"><i class="fas fa-users"></i></button>
+          </td>
+        </tr>`;
+      });
+      html += "</tbody></table>";
+      return html;
+    }
+
+    // --- Fetching Data ---
+    function fetchGeneralQuestions() {
+      db.collection("questions").where("general", "==", true).get().then(function(querySnapshot) {
+        document.getElementById("generalTableContainer").innerHTML = buildGeneralTable(querySnapshot);
+      }).catch(function(error) { console.error("Error fetching general questions:", error); });
+    }
+    function fetchNasraddiinQuestions() {
+      db.collection("questions").where("sheikhName", "==", "Sheik Nasraddiin").get().then(function(querySnapshot) {
+        document.getElementById("nasraddiinTableContainer").innerHTML = buildNasraddiinTable(querySnapshot);
+      }).catch(function(error) { console.error("Error fetching Sheik Nasraddiin questions:", error); });
+    }
+    function fetchAnsweredQuestions() {
+      db.collection("questionsanswered").where("sheikhName", "==", "Sheik Nasraddiin").get().then(function(querySnapshot) {
+        document.getElementById("answeredTableContainer").innerHTML = buildAnsweredTable(querySnapshot);
+      }).catch(function(error) { console.error("Error fetching answered questions:", error); });
+    }
+    function fetchAllData() {
+      fetchGeneralQuestions();
+      fetchNasraddiinQuestions();
+      fetchAnsweredQuestions();
+      updateTabContent("edit");
+      updateTabContent("delete");
+      updateTabContent("duplicate");
+    }
+
+    // --- Admin Actions ---
+    var currentEditDocId = "";
+    function editAnswer(docId) {
+      currentEditDocId = docId;
+      db.collection("questionsanswered").doc(docId).get().then(function(doc) {
+        if(doc.exists) {
+          document.getElementById("editAnswerText").value = doc.data().answerText || "";
+        }
+        document.getElementById("editAnswerModal").classList.add("active");
+      });
+    }
+    function closeEditModal() { document.getElementById("editAnswerModal").classList.remove("active"); }
+    document.getElementById("editAnswerForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+      let newAnswer = document.getElementById("editAnswerText").value;
+      db.collection("questionsanswered").doc(currentEditDocId).update({ answerText: newAnswer })
+        .then(function() {
+          alert("Answer updated.");
+          closeEditModal();
+          updateTabContent("edit");
+          fetchAnsweredQuestions();
+        });
+    });
+    function deleteAnswer(docId) {
+      if(confirm("Are you sure you want to delete this answer?")) {
+        db.collection("questionsanswered").doc(docId).delete().then(() => {
+          db.collection("questions").doc(docId).delete();
+          updateTabContent("delete");
+          fetchAnsweredQuestions();
+        });
+      }
+    }
+    function duplicateAnswer(docId) {
+      db.collection("questionsanswered").doc(docId).get().then(doc => {
+        if(doc.exists) {
+          let data = doc.data();
+          db.collection("questionsanswered").add(data).then(() => {
+            alert("Answer duplicated.");
+            updateTabContent("duplicate");
+          });
+        }
+      });
+    }
+    function banUser(docId) { alert("User banned (stub)."); }
+    function trackUsers(docId) { alert("Fetching user track details (stub)."); }
+
+    // --- Tab Navigation for Answered Card ---
+    function switchTab(tabName) {
+      document.querySelectorAll(".tab-nav button").forEach(btn => btn.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach(content => content.classList.remove("active"));
+      document.getElementById("tab-" + tabName).classList.add("active");
+      document.getElementById("tabContent-" + tabName).classList.add("active");
+      if(["edit","delete","duplicate"].includes(tabName)) { updateTabContent(tabName); }
+    }
+    function updateTabContent(tabName) {
+      db.collection("questionsanswered").where("sheikhName", "==", "Sheik Nasraddiin").get().then(function(querySnapshot) {
+        let html = "<table><thead><tr>" +
+                   "<th>User Name</th>" +
+                   "<th>Question</th>" +
+                   "<th>Answer</th>" +
+                   "<th>Answer Date</th>" +
+                   "</tr></thead><tbody>";
+        querySnapshot.forEach(function(doc) {
+          let data = doc.data();
+          html += `<tr>
+            <td>${data.userName || ""}</td>
+            <td>${data.questionText || ""}</td>
+            <td>${data.answerText || ""}</td>
+            <td>${new Date(data.answerDate).toLocaleString()}</td>
+          </tr>`;
+        });
+        html += "</tbody></table>";
+        if(tabName === "edit") {
+          document.getElementById("tabContent-edit").innerHTML = "<h3>Edit Answers</h3>" + html;
+        } else if(tabName === "delete") {
+          document.getElementById("tabContent-delete").innerHTML = "<h3>Delete Answers</h3>" + html;
+        } else if(tabName === "duplicate") {
+          document.getElementById("tabContent-duplicate").innerHTML = "<h3>Duplicate Answers</h3>" + html;
+        }
+      }).catch(function(error) { console.error("Error updating tab content:", error); });
+    }
+
+    // --- Answer Modal for New Answers ---
+    function openAnswerModal(cardType, sheikhName, containerId) {
+      let container = document.getElementById(containerId);
+      let checkboxes = container.querySelectorAll(".select-checkbox:checked");
+      if(checkboxes.length === 0) { alert("Please select at least one question."); return; }
+      window.selectedQuestionIds = [];
+      checkboxes.forEach(cb => window.selectedQuestionIds.push(cb.value));
+      document.getElementById("answerModal").classList.add("active");
+    }
+    function closeAnswerModal() { document.getElementById("answerModal").classList.remove("active"); }
+    document.getElementById("answerForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+      let answerText = document.getElementById("answerText").value;
+      let audioFile = document.getElementById("audioFile").files[0];
+      let promises = [];
+      window.selectedQuestionIds.forEach(docId => { promises.push(markQuestionAsAnsweredWithAnswer(docId, answerText, audioFile)); });
+      Promise.all(promises).then(() => {
+        alert("Answers submitted.");
+        closeAnswerModal();
+        fetchAllData();
+      }).catch(error => { console.error("Error submitting answers:", error); });
+    });
+
+    // --- Answer Submission Function ---
+    function markQuestionAsAnsweredWithAnswer(docId, answerText, audioFile) {
+      return db.collection("questions").doc(docId).get().then(function(doc) {
+        if(doc.exists) {
+          let originalData = doc.data();
+          let originalQuestionText = originalData.questionText;
+          originalData.answerText = answerText;
+          originalData.answerDate = new Date().toISOString();
+          if(audioFile) {
+            let filename = docId + "_" + Date.now() + "_" + audioFile.name;
+            let storageRef = storage.ref().child("audioAnswers/" + filename);
+            return storageRef.put(audioFile).then(snapshot => snapshot.ref.getDownloadURL())
+              .then(downloadURL => {
+                originalData.answerAudio = downloadURL;
+                originalData.questionText = originalQuestionText;
+                return db.collection("questionsanswered").doc(docId).set(originalData)
+                  .then(() => db.collection("questions").doc(docId).set({
+                    questionText: "Your question is answered",
+                    submissionDate: originalData.submissionDate
+                  }, { merge: false }));
+              });
+          } else {
+            originalData.questionText = originalQuestionText;
+            return db.collection("questionsanswered").doc(docId).set(originalData)
+              .then(() => db.collection("questions").doc(docId).set({
+                questionText: "Your question is answered",
+                submissionDate: originalData.submissionDate
+              }, { merge: false }));
+          }
+        }
+      });
+    }
+
+    // --- Download Functionality (common to all cards) ---
+    document.querySelectorAll('.download-btn').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        let downloadMenu = this.nextElementSibling;
+        downloadMenu.style.display = (downloadMenu.style.display === 'block') ? 'none' : 'block';
+      });
+    });
+    document.querySelectorAll('.download-submit-btn').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        let form = this.parentElement;
+        let downloadMenu = form.parentElement;
+        let selectedFields = Array.from(form.querySelectorAll('input[name="fields"]:checked')).map(input => input.value);
+        if(selectedFields.length === 0) { alert("Please select at least one field to download."); return; }
+        let downloadContainer = downloadMenu.parentElement;
+        let targetId = downloadContainer.getAttribute('data-target');
+        let tableContainer = document.getElementById(targetId);
+        let table = tableContainer.querySelector("table");
+        if(!table) { alert("No data available to download."); return; }
+        let fieldToIndex = { "userName": 1, "questionText": 2, "dynamicData": 3, "submissionDate": 4, "answerText": 3, "answerDate": 4 };
+        let csvContent = "";
+        let headerRow = [];
+        selectedFields.forEach(field => {
+          if(field === "userName") headerRow.push("User Name");
+          else if(field === "questionText") headerRow.push("Question");
+          else if(field === "dynamicData") headerRow.push("Dynamic Data");
+          else if(field === "submissionDate") headerRow.push("Submission Date");
+          else if(field === "answerText") headerRow.push("Answer");
+          else if(field === "answerDate") headerRow.push("Answer Date");
+        });
+        csvContent += headerRow.join(",") + "\n";
+        let rows = table.querySelectorAll("tbody tr");
+        rows.forEach(row => {
+          let rowData = [];
+          selectedFields.forEach(field => {
+            let colIndex = fieldToIndex[field];
+            let cell = row.cells[colIndex];
+            rowData.push(cell ? cell.innerText : "");
+          });
+          csvContent += rowData.join(",") + "\n";
+        });
+        let blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        let url = URL.createObjectURL(blob);
+        let a = document.createElement("a");
+        a.href = url;
+        a.download = "data-download.csv";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        downloadMenu.style.display = 'none';
+      });
+    });
+    document.addEventListener('click', function(e) {
+      document.querySelectorAll('.download-container').forEach(function(container) {
+        if (!container.contains(e.target)) {
+          let menu = container.querySelector('.download-menu');
+          if(menu) menu.style.display = 'none';
+        }
+      });
+    });
+
+    document.addEventListener("DOMContentLoaded", function() {
+      fetchAllData();
+    });
+  </script>
+</body>
+</html>

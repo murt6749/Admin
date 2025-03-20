@@ -1,0 +1,595 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Divine Admin Portal</title>
+  <!-- Firebase Libraries -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Poppins', sans-serif;
+    }
+    body {
+      background: linear-gradient(135deg, #f3e7ff 0%, #c6e2ff 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 20px;
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(15px);
+      border-radius: 25px;
+      padding: 30px;
+      margin-bottom: 25px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      overflow: hidden;
+      position: relative;
+      cursor: default;
+    }
+    .card:hover {
+      transform: translateY(-5px);
+    }
+    .avatar-container {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      margin: -70px auto 20px;
+      border: 4px solid white;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+      overflow: hidden;
+      position: relative;
+      transition: transform 0.3s ease;
+      cursor: pointer;
+    }
+    .avatar-container:hover {
+      transform: scale(1.05) rotate(-5deg);
+    }
+    .avatar-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .card h3 {
+      color: #2c3e50;
+      text-align: center;
+      font-size: 1.6rem;
+      margin-bottom: 15px;
+      font-weight: 600;
+      pointer-events: none;
+    }
+    .button-group {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin: 15px 0;
+      z-index: 2;
+      position: relative;
+    }
+    .btn {
+      padding: 12px 25px;
+      border: none;
+      border-radius: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .btn-login {
+      background: linear-gradient(45deg, #7f7fd5, #86a8e7);
+      color: white;
+    }
+    .btn-problem {
+      background: linear-gradient(45deg, #ff7eb3, #ff758c);
+      color: white;
+    }
+    .problem-box {
+      max-height: 0;
+      overflow: hidden;
+      transition: all 0.5s ease;
+    }
+    .problem-box.active {
+      max-height: 250px;
+      margin-top: 15px;
+    }
+    textarea {
+      width: 100%;
+      padding: 15px;
+      border-radius: 15px;
+      border: 2px solid #eee;
+      resize: none;
+      transition: all 0.3s ease;
+    }
+    textarea:focus {
+      border-color: #86a8e7;
+      box-shadow: 0 5px 15px rgba(134, 168, 231, 0.2);
+    }
+    .send-btn, .check-btn {
+      background: linear-gradient(45deg, #4facfe, #00f2fe);
+      color: white;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 12px;
+      margin-top: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .send-btn:hover, .check-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
+    }
+    /* Download Icon */
+    .download-container {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 5;
+    }
+    .download-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 1.2rem;
+      color: #2B5A46;
+    }
+    .download-menu {
+      display: none;
+      position: absolute;
+      top: 30px;
+      right: 0;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      padding: 10px;
+      width: 200px;
+    }
+    .download-menu form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .download-menu label {
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .download-submit-btn {
+      background: #D4AF37;
+      color: white;
+      border: none;
+      padding: 0.5rem;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      margin-top: 5px;
+    }
+    .download-submit-btn:hover { background: #c19b2b; }
+    /* Navigation Modal – Only opens when the avatar is clicked */
+    .nav-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.6);
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+    }
+    .nav-modal.active { display: flex; }
+    .nav-modal .modal-content {
+      background: #fff;
+      border-radius: 15px;
+      padding: 20px;
+      width: 90%;
+      max-width: 500px;
+      text-align: center;
+      position: relative;
+    }
+    .nav-modal h2 {
+      margin-bottom: 10px;
+      color: #2B5A46;
+    }
+    .nav-modal p {
+      margin-bottom: 20px;
+      color: #555;
+    }
+    .nav-modal .nav-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .nav-modal .nav-buttons a {
+      text-decoration: none;
+      background: #86a8e7;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 10px;
+      transition: transform 0.3s ease;
+    }
+    .nav-modal .nav-buttons a:hover {
+      transform: translateY(-3px);
+    }
+    .nav-modal .close-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: red;
+      color: white;
+      border: none;
+      font-size: 1.2rem;
+      padding: 5px 10px;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
+      animation: glow 1.5s infinite alternate;
+    }
+    @keyframes glow {
+      from { box-shadow: 0 0 5px rgba(255, 0, 0, 0.8); }
+      to { box-shadow: 0 0 20px rgba(255, 0, 0, 1); }
+    }
+    /* Sparkles (optional) */
+    .sparkles {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    .sparkle {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 50%;
+      animation: sparkle 1.5s infinite;
+    }
+    @keyframes sparkle {
+      0% { transform: scale(0); opacity: 1; }
+      100% { transform: scale(2); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Card 1: Sheik Aliyyi -->
+    <div class="card">
+      <div class="download-container" onclick="event.stopPropagation()">
+        <button class="download-btn"><i class="fas fa-download"></i></button>
+        <div class="download-menu">
+          <form>
+            <label><input type="checkbox" name="fields" value="userName" checked> User Name</label>
+            <label><input type="checkbox" name="fields" value="questionText" checked> Question</label>
+            <label><input type="checkbox" name="fields" value="dynamicData" checked> Dynamic Data</label>
+            <label><input type="checkbox" name="fields" value="submissionDate" checked> Submission Date</label>
+            <button type="button" class="download-submit-btn">Download</button>
+          </form>
+        </div>
+      </div>
+      <!-- Only clicking the avatar container opens the navigation modal -->
+      <div class="avatar-container" onclick="openNavModal('Sheik Aliyyi')">
+        <img src="1shekaliyyii.png" alt="Sheik Aliyyi">
+      </div>
+      <h3>Sheik Aliyyi</h3>
+      <div class="button-group" onclick="event.stopPropagation()">
+        <button class="btn btn-login" onclick="checkPassword('Sheik Aliyyi')">Login</button>
+        <button class="btn btn-problem" onclick="toggleProblem(this)">Problem</button>
+      </div>
+      <div class="problem-box">
+        <textarea placeholder="Describe your problem..." rows="3"></textarea>
+        <div style="margin-top:10px; display:flex; gap:10px; justify-content: flex-end;">
+          <button class="check-btn" onclick="checkAdminResponse(this)">Check</button>
+          <button class="send-btn" onclick="sendProblem(this)">Send ✨</button>
+        </div>
+        <div class="admin-response" style="margin-top:10px; display:none; background:#eee; padding:10px; border-radius:10px;"></div>
+      </div>
+      <div class="sparkles"></div>
+    </div>
+
+    <!-- Card 2: Sheik Abdurahmaan -->
+    <div class="card">
+      <div class="download-container" onclick="event.stopPropagation()">
+        <button class="download-btn"><i class="fas fa-download"></i></button>
+        <div class="download-menu">
+          <form>
+            <label><input type="checkbox" name="fields" value="userName" checked> User Name</label>
+            <label><input type="checkbox" name="fields" value="questionText" checked> Question</label>
+            <label><input type="checkbox" name="fields" value="dynamicData" checked> Dynamic Data</label>
+            <label><input type="checkbox" name="fields" value="submissionDate" checked> Submission Date</label>
+            <button type="button" class="download-submit-btn">Download</button>
+          </form>
+        </div>
+      </div>
+      <div class="avatar-container" onclick="openNavModal('Sheik Abdurahmaan')">
+        <img src="2.shekabdurahmaan.png" alt="Sheik Abdurahmaan">
+      </div>
+      <h3>Sheik Abdurahmaan</h3>
+      <div class="button-group" onclick="event.stopPropagation()">
+        <button class="btn btn-login" onclick="checkPassword('Sheik Abdurahmaan')">Login</button>
+        <button class="btn btn-problem" onclick="toggleProblem(this)">Problem</button>
+      </div>
+      <div class="problem-box">
+        <textarea placeholder="Describe your problem..." rows="3"></textarea>
+        <div style="margin-top:10px; display:flex; gap:10px; justify-content: flex-end;">
+          <button class="check-btn" onclick="checkAdminResponse(this)">Check</button>
+          <button class="send-btn" onclick="sendProblem(this)">Send ✨</button>
+        </div>
+        <div class="admin-response" style="margin-top:10px; display:none; background:#eee; padding:10px; border-radius:10px;"></div>
+      </div>
+      <div class="sparkles"></div>
+    </div>
+
+    <!-- Card 3: Sheik Abdusalaam -->
+    <div class="card">
+      <div class="download-container" onclick="event.stopPropagation()">
+        <button class="download-btn"><i class="fas fa-download"></i></button>
+        <div class="download-menu">
+          <form>
+            <label><input type="checkbox" name="fields" value="userName" checked> User Name</label>
+            <label><input type="checkbox" name="fields" value="questionText" checked> Question</label>
+            <label><input type="checkbox" name="fields" value="dynamicData" checked> Dynamic Data</label>
+            <label><input type="checkbox" name="fields" value="submissionDate" checked> Submission Date</label>
+            <button type="button" class="download-submit-btn">Download</button>
+          </form>
+        </div>
+      </div>
+      <div class="avatar-container" onclick="openNavModal('Sheik Abdusalaam')">
+        <img src="3.sheik_abdusalaam.png" alt="Sheik Abdusalaam">
+      </div>
+      <h3>Sheik Abdusalaam</h3>
+      <div class="button-group" onclick="event.stopPropagation()">
+        <button class="btn btn-login" onclick="checkPassword('Sheik Abdusalaam')">Login</button>
+        <button class="btn btn-problem" onclick="toggleProblem(this)">Problem</button>
+      </div>
+      <div class="problem-box">
+        <textarea placeholder="Describe your problem..." rows="3"></textarea>
+        <div style="margin-top:10px; display:flex; gap:10px; justify-content: flex-end;">
+          <button class="check-btn" onclick="checkAdminResponse(this)">Check</button>
+          <button class="send-btn" onclick="sendProblem(this)">Send ✨</button>
+        </div>
+        <div class="admin-response" style="margin-top:10px; display:none; background:#eee; padding:10px; border-radius:10px;"></div>
+      </div>
+      <div class="sparkles"></div>
+    </div>
+
+    <!-- Card 4: Sheik Nasraddiin -->
+    <div class="card">
+      <div class="download-container" onclick="event.stopPropagation()">
+        <button class="download-btn"><i class="fas fa-download"></i></button>
+        <div class="download-menu">
+          <form>
+            <label><input type="checkbox" name="fields" value="userName" checked> User Name</label>
+            <label><input type="checkbox" name="fields" value="questionText" checked> Question</label>
+            <label><input type="checkbox" name="fields" value="dynamicData" checked> Dynamic Data</label>
+            <label><input type="checkbox" name="fields" value="submissionDate" checked> Submission Date</label>
+            <button type="button" class="download-submit-btn">Download</button>
+          </form>
+        </div>
+      </div>
+      <div class="avatar-container" onclick="openNavModal('Sheik Nasraddiin')">
+        <img src="4.sheiknasraddiin.png" alt="Sheik Nasraddiin">
+      </div>
+      <h3>Sheik Nasraddiin</h3>
+      <div class="button-group" onclick="event.stopPropagation()">
+        <button class="btn btn-login" onclick="checkPassword('Sheik Nasraddiin')">Login</button>
+        <button class="btn btn-problem" onclick="toggleProblem(this)">Problem</button>
+      </div>
+      <div class="problem-box">
+        <textarea placeholder="Describe your problem..." rows="3"></textarea>
+        <div style="margin-top:10px; display:flex; gap:10px; justify-content: flex-end;">
+          <button class="check-btn" onclick="checkAdminResponse(this)">Check</button>
+          <button class="send-btn" onclick="sendProblem(this)">Send ✨</button>
+        </div>
+        <div class="admin-response" style="margin-top:10px; display:none; background:#eee; padding:10px; border-radius:10px;"></div>
+      </div>
+      <div class="sparkles"></div>
+    </div>
+  </div>
+
+  <!-- Navigation Modal -->
+  <div class="nav-modal" id="navModal" onclick="closeNavModal()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <button class="close-btn" onclick="closeNavModal()">X</button>
+      <h2>Fadis Youth Portal</h2>
+      <p>Welcome to Fadis Youth – a vibrant community for learning and growth. Explore our resources below.</p>
+      <div class="nav-buttons">
+        <a href="https://murt6749.github.io/Fadisyouth/index.html" target="_blank">Home</a>
+        <a href="https://murt6749.github.io/Fadisyouth/quran.html" target="_blank">Quraana</a>
+        <a href="https://murt6749.github.io/Fadisyouth/fatwa.html" target="_blank">Fatwaa</a>
+      </div>
+      <button class="send-btn" style="margin-top:20px;" onclick="closeNavModal()">Close</button>
+    </div>
+  </div>
+
+  <script>
+    // Firebase initialization – replace with your config
+    var firebaseConfig = {
+      apiKey: "AIzaSyAFgxSMtktsqJjcJOMnkTB8yZF6T492gpA",
+      authDomain: "fadis-youth.firebaseapp.com",
+      databaseURL: "https://fadis-youth-default-rtdb.firebaseio.com",
+      projectId: "fadis-youth",
+      storageBucket: "fadis-youth.firebasestorage.app",
+      messagingSenderId: "1067077305340",
+      appId: "1:1067077305340:web:3ca9c71202a8020c6ba879",
+      measurementId: "G-Z02SPW9ZKW"
+    };
+    firebase.initializeApp(firebaseConfig);
+    var db = firebase.firestore();
+
+    // --- Login and Password Checking using Firebase ---
+    function checkPassword(name) {
+      let btn = event.target;
+      btn.innerText = "Checking...";
+      btn.disabled = true;
+      // Map sheikh name to file name:
+      const mapping = {
+        "Sheik Aliyyi": "aliyyii",
+        "Sheik Abdurahmaan": "abdurahman",
+        "Sheik Abdusalaam": "abdusalaam",
+        "Sheik Nasraddiin": "nasraddiin"
+      };
+      let fileName = mapping[name] || name.toLowerCase().replace(/\s+/g, '-');
+      db.collection("adminPasswords").doc(fileName).get().then(function(doc) {
+        setTimeout(() => {
+          if(doc.exists && doc.data().password) {
+            let userPass = prompt(`Enter password for ${name}:`);
+            if(userPass === doc.data().password) {
+              window.location.href = fileName + ".html";
+            } else {
+              alert("Incorrect password! 🙅♂️");
+            }
+          } else {
+            let newPass = prompt(`No password set for ${name}. Please create a new password:`);
+            if(newPass && newPass.trim() !== "") {
+              db.collection("adminPasswords").doc(fileName).set({ password: newPass.trim() })
+                .then(() => { alert("Password created. Please try logging in again."); });
+            } else {
+              alert("Password not created.");
+            }
+          }
+          btn.innerText = "Login";
+          btn.disabled = false;
+        }, 1500);
+      }).catch(function(error) {
+        console.error("Error checking password:", error);
+        alert("Error checking password.");
+        btn.innerText = "Login";
+        btn.disabled = false;
+      });
+    }
+
+    // --- Problem Reporting and Admin Response Checking ---
+    function toggleProblem(button) {
+      const card = button.closest('.card');
+      const problemBox = card.querySelector('.problem-box');
+      problemBox.classList.toggle('active');
+    }
+    function sendProblem(button) {
+      const card = button.closest('.card');
+      const textarea = card.querySelector('textarea');
+      const problemText = textarea.value.trim();
+      if(problemText === '') {
+        alert("Please describe your problem before sending! 💌");
+        return;
+      }
+      button.innerHTML = 'Sending... 🌟';
+      button.disabled = true;
+      const sheikhName = card.querySelector('h3').innerText;
+      db.collection("adminProblems").add({
+        sheikhName: sheikhName,
+        problem: problemText,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+        button.innerHTML = 'Sent! ✅';
+        setTimeout(() => {
+          button.innerHTML = 'Send ✨';
+          button.disabled = false;
+          textarea.value = '';
+          card.querySelector('.problem-box').classList.remove('active');
+        }, 1500);
+      }).catch((error) => {
+        console.error("Error sending problem:", error);
+        alert("Error sending problem.");
+        button.innerHTML = 'Send ✨';
+        button.disabled = false;
+      });
+    }
+    function checkAdminResponse(button) {
+      const card = button.closest('.card');
+      const sheikhName = card.querySelector('h3').innerText;
+      const responseDiv = card.querySelector('.admin-response');
+      responseDiv.style.display = 'none';
+      responseDiv.innerHTML = 'Checking for response...';
+      db.collection("adminresponse").where("sheikhName", "==", sheikhName).orderBy("timestamp", "desc").limit(1).get().then(function(querySnapshot) {
+        if(querySnapshot.empty) {
+          responseDiv.innerHTML = "No response from admin yet.";
+        } else {
+          querySnapshot.forEach(function(doc) {
+            const data = doc.data();
+            responseDiv.innerHTML = `<strong>Admin:</strong> ${data.response || "No response text"}. <button class="send-btn" onclick="replyToAdmin(this)">Reply</button>`;
+          });
+        }
+        responseDiv.style.display = 'block';
+      }).catch(function(error) {
+        console.error("Error retrieving admin response:", error);
+        responseDiv.innerHTML = "Error retrieving response.";
+        responseDiv.style.display = 'block';
+      });
+    }
+    function replyToAdmin(button) {
+      const responseDiv = button.parentElement;
+      let replyBox = responseDiv.querySelector('.reply-box');
+      if(!replyBox) {
+        replyBox = document.createElement('div');
+        replyBox.className = 'reply-box';
+        replyBox.style.marginTop = '10px';
+        replyBox.innerHTML = `<textarea placeholder="Your reply..." rows="2" style="width:100%; padding:5px; border-radius:5px; border:1px solid #ccc;"></textarea>
+                              <button class="send-btn" style="margin-top:5px;" onclick="sendAdminReply(this)">Send Reply</button>`;
+        responseDiv.appendChild(replyBox);
+      } else {
+        replyBox.style.display = (replyBox.style.display === 'none' || replyBox.style.display === '') ? 'block' : 'none';
+      }
+    }
+    function sendAdminReply(button) {
+      const replyBox = button.closest('.reply-box');
+      const replyText = replyBox.querySelector('textarea').value.trim();
+      if(replyText === '') {
+        alert("Please enter a reply.");
+        return;
+      }
+      const card = button.closest('.card');
+      const sheikhName = card.querySelector('h3').innerText;
+      button.innerText = "Sending...";
+      db.collection("adminProblemsReply").add({
+        sheikhName: sheikhName,
+        reply: replyText,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+        alert("Reply sent to admin.");
+        button.innerText = "Send Reply";
+        replyBox.style.display = 'none';
+      }).catch((error) => {
+        console.error("Error sending reply:", error);
+        alert("Error sending reply.");
+        button.innerText = "Send Reply";
+      });
+    }
+
+    // --- Navigation Modal (only opens when the avatar is clicked) ---
+    function openNavModal(sheikhName) {
+      document.getElementById("navModal").classList.add("active");
+    }
+    function closeNavModal() {
+      document.getElementById("navModal").classList.remove("active");
+    }
+
+    // Add sparkles to each card
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.card').forEach(card => {
+        let sparkleContainer = document.createElement('div');
+        sparkleContainer.className = 'sparkles';
+        card.appendChild(sparkleContainer);
+        for(let i = 0; i < 15; i++){
+          const sparkle = document.createElement('div');
+          sparkle.className = 'sparkle';
+          sparkle.style.left = Math.random() * 100 + '%';
+          sparkle.style.top = Math.random() * 100 + '%';
+          sparkle.style.animationDelay = Math.random() * 1.5 + 's';
+          sparkleContainer.appendChild(sparkle);
+        }
+      });
+    });
+  </script>
+</body>
+</html>
